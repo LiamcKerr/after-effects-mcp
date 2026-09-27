@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Claude Bridge</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; padding: 12px; background: #232323; color: #c8c8c8; font: 12px/1.5 system-ui, "Segoe UI", sans-serif; }
+      .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: #666; flex: none; }
+      .dot.ok { background: #3fb950; }
+      .dot.bad { background: #e5534b; }
+      #status { font-weight: 600; color: #e6e6e6; }
+      #detail { color: #9a9a9a; margin-bottom: 10px; white-space: pre-wrap; }
+      button { background: #3a3a3a; color: #e6e6e6; border: 1px solid #4a4a4a; border-radius: 3px; padding: 4px 10px; font: inherit; cursor: pointer; }
+      button:hover { background: #454545; }
+      h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #8a8a8a; margin: 14px 0 6px; }
+      ul { list-style: none; margin: 0; padding: 0; }
+      li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px solid #2e2e2e; }
+      li .fail { color: #e5534b; }
+      li span:last-child { color: #8a8a8a; flex: none; }
+    </style>
+  </head>
+  <body>
+    <div class="row"><span id="dot" class="dot"></span><span id="status">Checking…</span></div>
+    <div id="detail"></div>
+    <button id="start">Restart bridge</button>
+    <h2>Recent calls</h2>
+    <ul id="calls"><li><span>None yet</span><span></span></li></ul>
+    <script src="./panel.js"></script>
+  </body>
+</html>

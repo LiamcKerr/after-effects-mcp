@@ -1,0 +1,4 @@
+{
+  "undo_name": "Claude: round-trip test",
+  "script": "log(\"hello\", { n: 2 });\nvar s = \"quote \\\" backslash \\\\ newline\\n tab\\t seps \" + String.fromCharCode(0x2028, 0x2029) + \" nul \" + String.fromCharCode(0) + \" end\";\nreturn { s: s, arr: [1, 2.5, null, true], nested: { deep: [ { x: 1 } ] }, inf: 1 / 0, when: new Date(0), fn: function () {} };"
+}

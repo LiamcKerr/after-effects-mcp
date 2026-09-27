@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.bitloop.claudebridge" ExtensionBundleVersion="1.0.0" ExtensionBundleName="Claude Bridge">
+  <ExtensionList>
+    <Extension Id="com.bitloop.claudebridge.host" Version="1.0.0" />
+    <Extension Id="com.bitloop.claudebridge.panel" Version="1.0.0" />
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="AEFT" Version="[18.0,99.9]" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="9.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <!-- Invisible host: starts with AE and owns the local bridge server. -->
+    <Extension Id="com.bitloop.claudebridge.host">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./host.html</MainPath>
+          <ScriptPath>./jsx/bridge.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>false</AutoVisible>
+          <StartOn>
+            <Event>applicationActivate</Event>
+            <Event>com.adobe.csxs.events.ApplicationActivate</Event>
+          </StartOn>
+        </Lifecycle>
+        <UI>
+          <Type>Custom</Type>
+          <Geometry>
+            <Size>
+              <Height>1</Height>
+              <Width>1</Width>
+            </Size>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+    <!-- Status panel: Window > Extensions > Claude Bridge. Also wakes the host. -->
+    <Extension Id="com.bitloop.claudebridge.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./panel.html</MainPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Claude Bridge</Menu>
+          <Geometry>
+            <Size>
+              <Height>260</Height>
+              <Width>300</Width>
+            </Size>
+            <MinSize>
+              <Height>160</Height>
+              <Width>220</Width>
+            </MinSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

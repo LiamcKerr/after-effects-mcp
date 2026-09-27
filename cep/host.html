@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Claude AE Bridge host</title>
+  </head>
+  <body>
+    <!-- Invisible extension: AE starts it on launch and it owns the local bridge server. No UI. -->
+    <script>
+      // Record load and syntax errors in host.js, which can't log them itself.
+      window.addEventListener("error", function (e) {
+        try {
+          var r = typeof require === "function" ? require : window.cep_node.require;
+          var p = r("path"), fs = r("fs"), os = r("os");
+          var dir = os.platform() === "win32" ? p.join(process.env.APPDATA || p.join(os.homedir(), "AppData", "Roaming"), "ClaudeAEBridge") : p.join(os.homedir(), "Library", "Application Support", "ClaudeAEBridge");
+          fs.mkdirSync(dir, { recursive: true });
+          fs.appendFileSync(p.join(dir, "host.log"), new Date().toISOString() + " page error: " + e.message + " (" + e.filename + ":" + e.lineno + ")\n");
+        } catch (x) {}
+      });
+    </script>
+    <script src="./host.js"></script>
+  </body>
+</html>

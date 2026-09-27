@@ -1,0 +1,4 @@
+{
+  "undo_name": "Claude: remove bridge test items",
+  "script": "var names = { \"Claude bridge test\": 1, \"Claude test\": 1, \"Background\": 1, \"Solids\": 1 };\nvar targets = [];\nfor (var i = 1; i <= app.project.numItems; i++) {\n  var it = app.project.item(i);\n  var isTestPng = it.name.indexOf(\"frame-\") === 0 && it.parentFolder.name === \"Claude test\";\n  if (names[it.name] || isTestPng) targets.push(it);\n}\nvar removed = [];\nfor (var j = 0; j < targets.length; j++) {\n  try { var n = targets[j].name; targets[j].remove(); removed.push(n); } catch (e) { /* already gone with its folder */ }\n}\nreturn { removed: removed, itemsLeft: app.project.numItems };"
+}

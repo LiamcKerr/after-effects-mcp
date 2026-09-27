@@ -1,0 +1,17 @@
+{
+  "name": "after-effects-mcp",
+  "version": "1.1.0",
+  "description": "MCP server that lets Claude Code (or any MCP client) drive Adobe After Effects: inspect, script, preview frames, import and render with progress.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Liam Kerr (Bitloop Labs)",
+  "engines": { "node": ">=18" },
+  "bin": { "after-effects-mcp": "server/server.mjs" },
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "smoke": "node test/smoke.mjs",
+    "fake-ae": "node test/fake-ae.mjs"
+  },
+  "keywords": ["mcp", "model-context-protocol", "after-effects", "extendscript", "claude", "cep"],
+  "repository": { "type": "git", "url": "https://github.com/LiamcKerr/after-effects-mcp.git" }
+}
