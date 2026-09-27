@@ -1,0 +1,4 @@
+# Keep LF everywhere (bash scripts break with CRLF on macOS); PowerShell scripts may be CRLF.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
