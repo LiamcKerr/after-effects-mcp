@@ -32,7 +32,7 @@ MCP client ──stdio──> server/server.mjs ──HTTP 127.0.0.1:47670 + tok
 | `ae_comp_info` | Comp settings and layers: timing, switches, parent, effects, text, transform, keyframe counts |
 | `ae_preview_frame` | Renders one frame to PNG and returns it as an image |
 | `ae_import` | Imports a file or image sequence, optionally into a named folder |
-| `ae_render` | Renders a comp through the render queue. Either waits, or (`wait: false`) returns a job id at once. `format: "png_sequence"` writes frames you can count, then encodes an .mp4 with ffmpeg |
+| `ae_render` | Renders a comp through the render queue. Either waits, or (`wait: false`) returns a job id at once. `format: "sequence"` writes numbered frames you can count (TIFF by default), then encodes an .mp4 with ffmpeg |
 | `ae_render_status` | Progress of a render: frames done, percent, time per frame, ETA. It answers while AE is busy rendering |
 | `ae_run_script` | Runs any ExtendScript (ES3) and returns the result |
 
@@ -40,7 +40,7 @@ Every change is one undo step named "Claude: …", so Edit > Undo in AE reverses
 
 ## Install
 
-The requirements are After Effects 2022 or newer and Node.js 18 or newer. ffmpeg is optional (for .mp4 from PNG renders). The installer registers the server with Claude Code if the `claude` CLI is installed.
+The requirements are After Effects 2022 or newer and Node.js 18 or newer. ffmpeg is optional (for .mp4 from sequence renders). The installer registers the server with Claude Code if the `claude` CLI is installed.
 
 ```powershell
 # Windows (tested: Windows 11, After Effects 2025 and 2026)
@@ -80,7 +80,7 @@ Register a stdio server with command `node` and argument `<repo>/server/server.m
 ## Rendering long comps
 
 ```text
-ae_render { comp: "Main", output_path: "D:/renders/main.mp4", format: "png_sequence", wait: false }
+ae_render { comp: "Main", output_path: "D:/renders/main.mp4", format: "sequence", wait: false }
   -> { job: "render-…", frames: 1800 }
 ae_render_status { job: "render-…" }
   -> { status: "running", framesDone: 612, percent: 34, secondsPerFrame: 1.9, etaSeconds: 2257 }

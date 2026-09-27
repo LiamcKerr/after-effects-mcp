@@ -94,9 +94,9 @@ function latestJob() {
     return files.length ? JSON.parse(fs.readFileSync(path.join(JOBS_DIR, files[0].f), "utf8")) : null;
   } catch { return null; }
 }
-// Frames written so far by a PNG-sequence render: files named <base>_<number>.png.
+// Frames written so far by a sequence render: files named <base>_<number>.<ext>.
 function framesOnDisk(rec) {
-  const re = new RegExp(`^${rec.base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_(\\d+)\\.png$`, "i");
+  const re = new RegExp(`^${rec.base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_(\\d+)\\.${rec.ext || "png"}$`, "i");
   try {
     const nums = fs.readdirSync(rec.framesDir).map((f) => re.exec(f)).filter(Boolean).map((m) => Number(m[1]));
     return { count: nums.length, first: nums.length ? Math.min(...nums) : null };
@@ -106,7 +106,7 @@ function hasFfmpeg() { return spawnSync("ffmpeg", ["-version"], { stdio: "ignore
 function encodeMp4(rec) {
   const { count, first } = framesOnDisk(rec);
   if (!count) throw new Error(`No frames found in ${rec.framesDir}`);
-  const pattern = path.join(rec.framesDir, `${rec.base}_%05d.png`);
+  const pattern = path.join(rec.framesDir, `${rec.base}_%05d.${rec.ext || "png"}`);
   const r = spawnSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", "-framerate", String(rec.fps), "-start_number", String(first), "-i", pattern,
     "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p", "-movflags", "+faststart", rec.output], { encoding: "utf8" });
   if (r.status !== 0) throw new Error(`ffmpeg failed: ${(r.stderr || "").slice(0, 400)}`);
@@ -115,7 +115,7 @@ function encodeMp4(rec) {
 function progressOf(rec) {
   const elapsed = (Date.now() - rec.started) / 1000;
   const out = { job: rec.job, comp: rec.comp, format: rec.format, frames: rec.frames, elapsedSeconds: Math.round(elapsed) };
-  if (rec.format === "png_sequence") {
+  if (rec.format === "sequence") {
     const done = framesOnDisk(rec).count;
     out.framesDone = done;
     out.percent = rec.frames ? Math.min(100, Math.round((done / rec.frames) * 1000) / 10) : null;
@@ -350,21 +350,20 @@ export const TOOLS = [
     description:
       "Render a comp through AE's render queue. Only this comp renders; other queued items are paused and restored. " +
       "format \"template\" (default) writes one file with the output module template (AE 2026's default writes H.264 .mp4); AE shows no progress until it finishes. " +
-      "format \"png_sequence\" writes numbered PNG frames to <output_path without extension>_frames/ so progress can be watched, then, if output_path ends in .mp4 and ffmpeg is on PATH, encodes them to output_path (video only, no audio). " +
+      "format \"sequence\" writes numbered frames (default template \"TIFF Sequence with Alpha\"; AE ships no PNG template) to <output_path without extension>_frames/ so progress can be watched, then, if output_path ends in .mp4 and ffmpeg is on PATH, encodes them to output_path (video only, no audio). " +
       "wait true (default) blocks until done. wait false returns a job id at once: poll ae_render_status every 30-60 s. While a render runs, AE answers nothing else; only ae_render_status works. " +
       "Output module and render settings take AE template names; an unknown name returns the available ones.",
     inputSchema: {
       type: "object",
       properties: {
-        output_path: { type: "string", description: "Absolute output file path (e.g. .mp4). For png_sequence the frames go to a sibling folder <name>_frames/." },
+        output_path: { type: "string", description: "Absolute output file path (e.g. .mp4). For sequence the frames go to a sibling folder <name>_frames/." },
         comp: COMP_ARG,
-        format: { type: "string", enum: ["template", "png_sequence"], default: "template" },
+        format: { type: "string", enum: ["template", "sequence", "png_sequence"], default: "template", description: "\"sequence\" renders numbered frames with progress (\"png_sequence\" is an alias)." },
         wait: { type: "boolean", default: true, description: "false: start the render and return a job id for ae_render_status." },
-        output_module: { type: "string", description: "Output module template for format \"template\", e.g. \"H.264 - Match Render Settings - 15 Mbps\" or \"Lossless\". Default: AE's default." },
+        output_module: { type: "string", description: "Output module template. template: e.g. \"H.264 - Match Render Settings - 15 Mbps\" or \"Lossless\" (default: AE's default). sequence: an image-sequence template (default \"TIFF Sequence with Alpha\"; a custom PNG template works too)." },
         render_settings: { type: "string", description: "Render settings template, e.g. \"Best Settings\". Default: AE's default." },
         span: { type: "string", enum: ["work_area", "comp"], default: "work_area" },
-        alpha: { type: "boolean", default: false, description: "png_sequence only: keep the alpha channel (RGB + Alpha)." },
-        encode: { type: "boolean", default: true, description: "png_sequence only: encode the frames to output_path with ffmpeg when done (if output_path ends in .mp4)." },
+        encode: { type: "boolean", default: true, description: "sequence only: encode the frames to output_path with ffmpeg when done (if output_path ends in .mp4)." },
         overwrite: { type: "boolean", default: false },
         timeout_minutes: { type: "number", minimum: 1, maximum: 600, default: 60, description: "wait true only." },
       },
@@ -374,12 +373,14 @@ export const TOOLS = [
     async handler(args, ctx) {
       const out = args.output_path;
       if (typeof out !== "string" || !path.isAbsolute(out)) throw new Error("output_path must be an absolute file path");
-      const png = args.format === "png_sequence";
+      const png = args.format === "sequence" || args.format === "png_sequence";      // `png`: any image sequence
+      const seqTemplate = png ? args.output_module || "TIFF Sequence with Alpha" : null;
+      const ext = !png ? null : /png/i.test(seqTemplate) ? "png" : /tiff/i.test(seqTemplate) ? "tif" : /photoshop|multi-machine/i.test(seqTemplate) ? "psd" : /jpe?g/i.test(seqTemplate) ? "jpg" : "tif";
       const base = path.basename(out, path.extname(out));
       const framesDir = png ? path.join(path.dirname(out), `${base}_frames`) : null;
       if (png) {
-        const existing = fs.existsSync(framesDir) ? fs.readdirSync(framesDir).filter((f) => /\.png$/i.test(f)) : [];
-        if (existing.length && !args.overwrite) throw new Error(`${framesDir} already holds ${existing.length} PNGs. Pass overwrite: true to replace them.`);
+        const existing = fs.existsSync(framesDir) ? fs.readdirSync(framesDir).filter((f) => /\.(png|tiff?|psd|jpe?g)$/i.test(f)) : [];
+        if (existing.length && !args.overwrite) throw new Error(`${framesDir} already holds ${existing.length} frames. Pass overwrite: true to replace them.`);
         for (const f of existing) fs.unlinkSync(path.join(framesDir, f));
         fs.mkdirSync(framesDir, { recursive: true });
       } else {
@@ -397,7 +398,7 @@ export const TOOLS = [
         return { comp: comp.name, id: comp.id, fps: comp.frameRate, start: s0, duration: d, frames: Math.round(d * comp.frameRate) };`, { label: "render plan" })).result;
 
       // 2. The render script: queue the comp, set output, pause other items, render, restore.
-      const target = png ? path.join(framesDir, `${base}_[#####].png`) : out;
+      const target = png ? path.join(framesDir, `${base}_[#####].${ext}`) : out;
       const script = `${HELPERS}
         var comp = __findComp(${lit(plan.id)});
         var rq = app.project.renderQueue;
@@ -411,14 +412,9 @@ export const TOOLS = [
           throw new Error("No " + what + ' template "' + want + '". Available: ' + shown.join(", "));
         }
         try {
-          var rs = ${lit(args.render_settings || "")}, omName = ${lit(png ? "" : args.output_module || "")};
+          var rs = ${lit(args.render_settings || "")}, omName = ${lit(png ? seqTemplate : args.output_module || "")};
           if (rs) { pick(item.templates, rs, "render settings"); item.applyTemplate(rs); }
           if (omName) { pick(om.templates, omName, "output module"); om.applyTemplate(omName); }
-          if (${lit(png)}) {
-            var settings = { "Format": "PNG Sequence" };
-            om.setSettings(settings);
-            if (${lit(!!args.alpha)}) om.setSettings({ "Video Output": { "Channels": "RGB + Alpha" } });
-          }
           item.timeSpanStart = ${lit(plan.start)}; item.timeSpanDuration = ${lit(plan.duration)};
           om.file = new File(${lit(target.replace(/\\/g, "/"))});
         } catch (e) { item.remove(); throw e; }
@@ -438,7 +434,7 @@ export const TOOLS = [
       // No undo group: rendering inside one makes AE raise a modal "Undo group mismatch"
       // warning, which blocks every later script until someone clicks OK.
 
-      const rec = saveJob({ job: `render-${Date.now().toString(36)}`, comp: plan.comp, format: png ? "png_sequence" : "template", output: out, framesDir, base,
+      const rec = saveJob({ job: `render-${Date.now().toString(36)}`, comp: plan.comp, format: png ? "sequence" : "template", output: out, framesDir, base, ext,
         frames: plan.frames, fps: plan.fps, started: Date.now(), encode: png && args.encode !== false && /\.mp4$/i.test(out), status: "running" });
 
       if (args.wait === false) {
@@ -464,8 +460,8 @@ export const TOOLS = [
     name: "ae_render_status",
     title: "Render progress",
     description:
-      "Progress of a render started by ae_render: status (running, done, error), and for png_sequence renders frames done, percent, seconds per frame and ETA. " +
-      "Works while AE is busy rendering. When a png_sequence render with encode is done, this call encodes the .mp4 (ffmpeg) and reports it. Omit job for the latest render.",
+      "Progress of a render started by ae_render: status (running, done, error), and for sequence renders frames done, percent, seconds per frame and ETA. " +
+      "Works while AE is busy rendering. When a sequence render with encode is done, this call encodes the .mp4 (ffmpeg) and reports it. Omit job for the latest render.",
     inputSchema: {
       type: "object",
       properties: { job: { type: "string", description: "Job id from ae_render. Omit for the most recent render." } },
@@ -484,7 +480,7 @@ export const TOOLS = [
           rec.ended = Date.now();
           rec.result = res.ok === false ? { error: res.error } : res.result;
           saveJob(rec);
-        } else if (host.status === "unknown" && rec.format === "png_sequence" && out.framesDone >= rec.frames) {
+        } else if (host.status === "unknown" && rec.format === "sequence" && out.framesDone >= rec.frames) {
           rec.status = "done"; rec.ended = Date.now(); saveJob(rec);       // bridge restarted since; the frames say it finished
         }
       }

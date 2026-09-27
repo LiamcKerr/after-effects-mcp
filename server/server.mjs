@@ -17,7 +17,7 @@ const INSTRUCTIONS =
   "Inspect before changing anything: ae_list_items and ae_comp_info return ids to reuse. Every change runs as one undo step " +
   "named \"Claude: ...\", so the user can reverse it with Edit > Undo. Check visual changes with ae_preview_frame. " +
   "ExtendScript is ES3, and alert/confirm/prompt or any dialog freezes AE until someone clicks. " +
-  "For long renders use ae_render with format png_sequence and wait false, then poll ae_render_status every 30-60 s and report progress; AE answers nothing else while it renders.";
+  "For long renders use ae_render with format sequence and wait false, then poll ae_render_status every 30-60 s and report progress; AE answers nothing else while it renders.";
 
 const NOT_RUNNING =
   "The After Effects bridge is not reachable. Check that After Effects is open. After a fresh install, restart AE once. " +

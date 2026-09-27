@@ -39,7 +39,7 @@ You are installing (or using) an MCP server that lets you drive the copy of Adob
 | `bridge-config` | The bridge has never started | The user opens (or restarts) After Effects once |
 | `bridge-running` | AE closed, bridge not loaded, or AE busy | The user opens AE. If it's open: Window > Extensions > Claude Bridge > **Restart bridge**. If there's no "Claude Bridge" in that menu, fix `cep-extension` / `player-debug-mode` and restart AE. If AE is rendering or showing a dialog, wait or ask the user to close the dialog |
 | `bridge-version` | AE is still running an older bridge | Restart bridge (as above) or restart AE |
-| `ffmpeg` (optional) | No ffmpeg on PATH | Only needed to turn `png_sequence` renders into .mp4 automatically |
+| `ffmpeg` (optional) | No ffmpeg on PATH | Only needed to turn `sequence` renders into .mp4 automatically |
 
 `ae_status` saying *"The After Effects bridge is not reachable"* is the `bridge-running` row. `ae_preview_frame` failing with a file permission error means step 4.2 wasn't done.
 
@@ -55,7 +55,7 @@ You are installing (or using) an MCP server that lets you drive the copy of Adob
 - **Check your visual work** with `ae_preview_frame`, which returns a PNG of any frame.
 - **Rendering:**
   - Short or light comps: `ae_render` with defaults. It waits and writes the file with AE's default template, which is H.264 .mp4 in AE 2026.
-  - Long or heavy comps: use `format: "png_sequence"` and `wait: false`. You get a job id straight away. Poll `ae_render_status` every 30–60 s and tell the user the percentage and ETA it reports. When it's done, if the output path ends in .mp4 and ffmpeg is installed, `ae_render_status` encodes the MP4. PNG renders carry no audio, so mux it separately if needed.
+  - Long or heavy comps: use `format: "sequence"` and `wait: false`. You get a job id straight away. Poll `ae_render_status` every 30–60 s and tell the user the percentage and ETA it reports. When it's done, if the output path ends in .mp4 and ffmpeg is installed, `ae_render_status` encodes the MP4. Sequence renders (TIFF by default) carry no audio, so mux it separately if needed.
   - While a render runs, AE answers nothing else. Only `ae_render_status` works. Don't queue other calls.
 - **Heavy 4K effects** (radial blur, big blurs, 3D templates) are slow per frame. Preview single frames before committing to a full render.
 

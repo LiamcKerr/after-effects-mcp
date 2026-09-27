@@ -86,9 +86,9 @@ if (health.ok) {
   add("bridge-version", "recommended", maj > 1 || (maj === 1 && min >= 1), `bridge ${health.bridge}`, "Restart After Effects (or Window > Extensions > Claude Bridge > Restart bridge) to load the updated bridge.");
 }
 
-// 7. ffmpeg (optional: only for png_sequence renders encoded to .mp4)
+// 7. ffmpeg (optional: only for sequence renders encoded to .mp4)
 const ff = run("ffmpeg", ["-version"]);
-add("ffmpeg", "optional", ff.code === 0, ff.code === 0 ? ff.out.split("\n")[0] : "not on PATH", "Optional. Install ffmpeg and put it on PATH to turn png_sequence renders into .mp4 automatically.");
+add("ffmpeg", "optional", ff.code === 0, ff.code === 0 ? ff.out.split("\n")[0] : "not on PATH", "Optional. Install ffmpeg and put it on PATH to turn sequence renders into .mp4 automatically.");
 
 // Report
 const failedRequired = checks.filter((c) => !c.ok && c.level === "required");
