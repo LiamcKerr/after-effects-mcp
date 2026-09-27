@@ -98,8 +98,11 @@ function latestJob() {
 function framesOnDisk(rec) {
   const re = new RegExp(`^${rec.base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}_(\\d+)\\.${rec.ext || "png"}$`, "i");
   try {
-    const nums = fs.readdirSync(rec.framesDir).map((f) => re.exec(f)).filter(Boolean).map((m) => Number(m[1]));
-    return { count: nums.length, first: nums.length ? Math.min(...nums) : null };
+    const hits = fs.readdirSync(rec.framesDir).map((f) => [f, re.exec(f)]).filter(([, m]) => m);
+    const nums = hits.map(([, m]) => Number(m[1]));
+    // Write times of the frames give the real pace (elapsed time also counts any stall before frame 1).
+    const times = hits.map(([f]) => fs.statSync(path.join(rec.framesDir, f)).mtimeMs).sort((a, b) => a - b);
+    return { count: nums.length, first: nums.length ? Math.min(...nums) : null, firstAt: times[0] || null, lastAt: times[times.length - 1] || null };
   } catch { return { count: 0, first: null }; }
 }
 function hasFfmpeg() { return spawnSync("ffmpeg", ["-version"], { stdio: "ignore" }).status === 0; }
@@ -116,11 +119,11 @@ function progressOf(rec) {
   const elapsed = (Date.now() - rec.started) / 1000;
   const out = { job: rec.job, comp: rec.comp, format: rec.format, frames: rec.frames, elapsedSeconds: Math.round(elapsed) };
   if (rec.format === "sequence") {
-    const done = framesOnDisk(rec).count;
+    const fr = framesOnDisk(rec), done = fr.count;
     out.framesDone = done;
     out.percent = rec.frames ? Math.min(100, Math.round((done / rec.frames) * 1000) / 10) : null;
     if (done > 0 && done < rec.frames) {
-      const perFrame = elapsed / done;
+      const perFrame = done > 2 && fr.lastAt > fr.firstAt ? (fr.lastAt - fr.firstAt) / 1000 / (done - 1) : elapsed / done;
       out.secondsPerFrame = Math.round(perFrame * 100) / 100;
       out.etaSeconds = Math.round(perFrame * (rec.frames - done));
     }
@@ -415,7 +418,10 @@ export const TOOLS = [
           var rs = ${lit(args.render_settings || "")}, omName = ${lit(png ? seqTemplate : args.output_module || "")};
           if (rs) { pick(item.templates, rs, "render settings"); item.applyTemplate(rs); }
           if (omName) { pick(om.templates, omName, "output module"); om.applyTemplate(omName); }
-          item.timeSpanStart = ${lit(plan.start)}; item.timeSpanDuration = ${lit(plan.duration)};
+          // The span comes from the comp itself: a duration sent through JSON can round a hair past
+          // the comp end, and AE then stops on a modal "frames outside of range" warning.
+          if (${lit(span)} === "comp") { item.timeSpanStart = 0; item.timeSpanDuration = comp.duration; }
+          else { item.timeSpanStart = comp.workAreaStart; item.timeSpanDuration = comp.workAreaDuration; }
           om.file = new File(${lit(target.replace(/\\/g, "/"))});
         } catch (e) { item.remove(); throw e; }
         var paused = [];
@@ -424,7 +430,9 @@ export const TOOLS = [
           if (j !== mine && other.status === RQItemStatus.QUEUED) { other.render = false; paused.push(other); }
         }
         var t0 = new Date().getTime();
-        try { rq.render(); } finally { for (var k = 0; k < paused.length; k++) paused[k].render = true; }
+        // Any warning AE raises mid-render would sit in a modal dialog and freeze the bridge.
+        app.beginSuppressDialogs();
+        try { rq.render(); } finally { app.endSuppressDialogs(false); for (var k = 0; k < paused.length; k++) paused[k].render = true; }
         var s = item.status, names = { DONE: RQItemStatus.DONE, ERR_STOPPED: RQItemStatus.ERR_STOPPED, USER_STOPPED: RQItemStatus.USER_STOPPED, NEEDS_OUTPUT: RQItemStatus.NEEDS_OUTPUT };
         var status = "OTHER";
         for (var n in names) if (names[n] === s) status = n;
